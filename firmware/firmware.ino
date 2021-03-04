@@ -1,106 +1,160 @@
 #include <SPI.h> 
-#include <SD.h>  
+//#include <SD.h>  
 #include <SparkFun_ADXL345.h>
+#include <Wire.h>
+#include <TimeLib.h>
+#include <DS1307RTC.h>
+#include <SdFat.h>
 
-ADXL345 adxl = ADXL345(10);
-#define interruptPin 2
+#define SD_CS_PIN 4
+#define ADXL_CS_PIN 5
+#define STOP_PIN 17
+#define ENABLE_SERIAL_PIN 16
 
-const char* filename = "tets.csv";
-// SRAM   2k bytes, use haft ot it for data queue. Each read will be store in 3 byte. max queue size = 999
-int dataQueue[999];
-int queueCounter = 0;
-int x,y,z;
 
-void writeLog()
+ADXL345 adxl;// = ADXL345(ADXL_CS_PIN);
+SdFat SD;
+
+unsigned int lastReadMillis;
+int x=0,y=0,z=0;
+int lastReadX=0,lastReadY=0,lastReadZ=0;
+int dataQueue[200];
+int queuePos = 0;
+
+bool dataChanged(int x,int y,int z,int lap)
 {
-    File logFile;
-    logFile = SD.open(filename, FILE_WRITE);
-
-    for(int i=0;i<999;i++)
-        file.println(dataQueue[i]);
-        if((i+1)% 3 == 0)
-            file.println("\n");
-        else
-            file.print(",");
-        file.flush();
-    queueCounter = 0;
+    if ((x != lastReadX) || (y != lastReadY) || (z != lastReadZ))
+    {
+        lastReadX = x;
+        lastReadY = y;
+        lastReadZ = z;
+        return true;
+    }
+    return false;
 }
 
+void appendToQueue(int x,int y,int z,int lap)
+{
+    dataQueue[queuePos] = lap - lastReadMillis;
+    dataQueue[queuePos+1] = x; 
+    dataQueue[queuePos+2] = y;
+    dataQueue[queuePos+3] = z;
+
+    queuePos = queuePos + 4;
+    lastReadMillis = lap;
+
+}
+
+void readSensor()
+{
+    int x,y,z;   
+    adxl.readAccel(&x, &y, &z);
+
+    // log if data changed, ignore time change because MCU can read the data for under 1ms
+    if(dataChanged(x,y,z,0))
+        appendToQueue(x,y,z,millis());
+}
+
+void exportLog()
+{
+    if(queuePos == 200)
+    {
+        if (!SD.begin(SD_CS_PIN)) {
+            if(Serial)
+                Serial.println("SD failed");
+            while (1);
+        }
+        File logFile;
+
+        logFile = SD.open("test.txt", FILE_WRITE);
+
+        for(int i=0;i<200;i++)
+        {
+            //Serial.print(dataQueue[i]);
+            logFile.print(dataQueue[i]);
+            if (i !=0 && (i+1)%4 == 0)
+                logFile.print("\n");
+            else
+                logFile.print(",");
+        }
+        queuePos = 0;
+        //Serial.println("Exported");
+        logFile.close();
+        adxl = ADXL345(ADXL_CS_PIN);
+    }
+}
+
+void exportTimeStamp()
+{
+    if (!SD.begin(SD_CS_PIN)) {
+        if(Serial)
+            Serial.println("SD failed");
+        while (1);
+    }
+    File logFile;
+
+    logFile = SD.open("test.txt", FILE_WRITE);
+    tmElements_t timeObj;
+    if (RTC.read(timeObj))
+    {
+        //tmYearToCalendar(timeObj.Year),timeObj.Month,timeObj.Day,timeObj.Hour,timeObj.Minute,timeObj.Second);
+        logFile.print("#");
+        logFile.print(tmYearToCalendar(timeObj.Year));
+        logFile.print("-");
+        logFile.print(timeObj.Month);
+        logFile.print("-");
+        logFile.print(timeObj.Day);
+        logFile.print("_");
+        logFile.print(timeObj.Hour);
+        logFile.print(":");
+        logFile.print(timeObj.Minute);
+        logFile.print(":");
+        logFile.println(timeObj.Second);
+    }
+    else 
+    {
+        if (RTC.chipPresent())
+            logFile.println("no time set");
+        else
+            logFile.println("RTC-err");
+    }
+    logFile.close();
+    adxl = ADXL345(ADXL_CS_PIN);
+}
+
+
 void setup() {
-    // turn this off for some extra speed
-    Serial.begin(9600);
-    
+    pinMode(STOP_PIN,INPUT_PULLUP);
+    pinMode(ENABLE_SERIAL_PIN,INPUT_PULLUP);
+    if(!digitalRead(ENABLE_SERIAL_PIN))
+    {
+        Serial.begin(9600);
+        Serial.println("Ready");
+    }
+
+    //printTime();
+    // write timestamp once
+    exportTimeStamp();
+
     adxl.powerOn();
-    adxl.setRangeSetting(16);           // Accepted values are 2g, 4g, 8g or 16g
-    adxl.setSpiBit(0);                  // Configure the device to be in 4 wire SPI mode when set to '0' or 3 wire SPI mode when set to 1
+    adxl.setRangeSetting(2);           // Accepted values are 2g, 4g, 8g or 16g
+    adxl.setSpiBit(0);                  // Set SPI mode
+    adxl = ADXL345(ADXL_CS_PIN); // this will need to be recalled after sd init/read/write
+    //Serial.println("Init completed");
+}
 
-    adxl.setActivityXYZ(1, 1, 1);       // Set to activate movement detection in the axes "adxl.setActivityXYZ(X, Y, Z);" (1 == ON, 0 == OFF)
-    adxl.setActivityThreshold(128);      // 62.5mg per increment   // Set activity   // Inactivity thresholds (0-255)
-    
-    adxl.setInactivityXYZ(1, 0, 0);     // Set to detect inactivity in all the axes "adxl.setInactivityXYZ(X, Y, Z);" (1 == ON, 0 == OFF)
-    adxl.setInactivityThreshold(128);    // 62.5mg per increment   // Set inactivity // Inactivity thresholds (0-255)
-    adxl.setTimeInactivity(30);         // How many seconds of no activity is inactive?
-    adxl.InactivityINT(1);
-
-    attachInterrupt(digitalPinToInterrupt(interruptPin), ADXL_ISR, RISING);   // Attach Interrupt
-
+void stop()
+{
+    if (!digitalRead(STOP_PIN))
+    {
+        if(Serial)
+            Serial.println("Stop");
+        while(1);
+    }
 }
 
 void loop() { 
-    measure();
-    delay(5);
-}
-
-void measure() {
-    adxl.readAccel(&x, &y, &z);
-    dataQueue[queueCounter] = x;
-    dataQueue[queueCounter+1] = y;
-    dataQueue[queueCounter+2] = z;
-    queueCounter+=3;
-
-    if(queueCounter == 999)
-        writeLog();
-}
-
-
-void ADXL_ISR()
-{
-    byte interrupts = adxl.getInterruptSource();
-  
-    // Inactivity
-    if(adxl.triggered(interrupts, ADXL345_INACTIVITY))
-    {
-        Serial.println("INACTIVITY");
-        // sleep code from here
-    }
-  
-    // code will resume from here ? or set active pin to other intp pin?
-    // Activity
-    if(adxl.triggered(interrupts, ADXL345_ACTIVITY))
-    {
-        Serial.println("ACTIVITY"); 
-        // wake up code from here
-        sleep_disable();
-        power_all_enable();
-    }
-}
-
-void enterSleepMode()
-{
-    set_sleep_mode (SLEEP_MODE_PWR_DOWN);  
-    power_adc_disable();
-    power_spi_disable();
-    power_timer0_disable();
-    power_timer1_disable();
-    power_timer2_disable();
-    power_twi_disable();
-
-    // if only have serial 
-    // UCSR0B &= ~bit (RXEN0);  // disable receiver
-    // UCSR0B &= ~bit (TXEN0);  // disable transmitter
-
-    sleep_enable();
-    digitalWrite (AWAKE_LED, LOW);
-    // interrupts (); nointerrupts (); ??
-    sleep_cpu ();      
+    readSensor();
+    exportLog();
+    stop();
 }
