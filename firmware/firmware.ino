@@ -50,6 +50,13 @@ void readSensor()
     int x,y,z;   
     adxl.readAccel(&x, &y, &z);
 
+    if(Serial)
+    {
+        Serial.print(x); Serial.print(",");
+        Serial.print(y); Serial.print(",");
+        Serial.println(z);
+    }
+
     // log if data changed, ignore time change because MCU can read the data for under 1ms
     if(dataChanged(x,y,z,0))
         appendToQueue(x,y,z,millis());
@@ -137,7 +144,7 @@ void setup() {
     exportTimeStamp();
 
     adxl.powerOn();
-    adxl.setRangeSetting(2);           // Accepted values are 2g, 4g, 8g or 16g
+    adxl.setRangeSetting(8);           // Accepted values are 2g, 4g, 8g or 16g
     adxl.setSpiBit(0);                  // Set SPI mode
     adxl = ADXL345(ADXL_CS_PIN); // this will need to be recalled after sd init/read/write
     //Serial.println("Init completed");
