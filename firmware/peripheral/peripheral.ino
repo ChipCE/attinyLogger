@@ -1,45 +1,9 @@
-/*********************************************************************
- This is an example for our nRF52 based Bluefruit LE modules
-
- Pick one up today in the adafruit shop!
-
- Adafruit invests time and resources providing this open source code,
- please support Adafruit and open-source hardware by purchasing
- products from Adafruit!
-
- MIT license, check LICENSE for more information
- All text above, and the splash screen below must be included in
- any redistribution
- 
- Author: KTOWN (Kevin Townsend)
- Copyright (C) Adafruit Industries 2017
-*********************************************************************/
-
-/*  This example constantly advertises a custom 128-bit UUID, and is
- *  intended to be used in combination with a Central sketch that scans
- *  for this UUID, and then displays an alert message, sorting matching
- *  devices by their RSSI level which is an approximate indication of
- *  distance (although highly subject to environmental obstacles).
- *  
- *  By including a custom UUID in the advertising packet, we can easily
- *  filter the scan results on the Central device, rather than manually
- *  parsing the advertising packet(s) of every device in range.
- *  
- *  This example is intended to be run with the *_central.ino version
- *  of this application.
- */
-
 #include <bluefruit.h>
 #include <ble_gap.h>
 
 // Software Timer for blinking RED LED
 SoftwareTimer blinkTimer;
 
-// Custom UUID used to differentiate this device.
-// Use any online UUID generator to generate a valid UUID.
-// Note that the byte order is reversed ... CUSTOM_UUID
-// below corresponds to the follow value:
-// df67ff1a-718f-11e7-8cf7-a6006ad3dba0
 const uint8_t CUSTOM_UUID[] =
 {
     0xA0, 0xDB, 0xD3, 0x6A, 0x00, 0xA6, 0xF7, 0x8C,
@@ -86,6 +50,7 @@ void setup()
 
 void startAdv(void)
 {   
+  Serial.println("Adv loop");
   // Note: The entire advertising packet is limited to 31 bytes!
   
   // Advertising packet
@@ -97,10 +62,6 @@ void startAdv(void)
   // A valid 128-bit UUID can be generated online with almost no chance of conflict
   // with another device or etup
   //Bluefruit.Advertising.addUuid(uuid);
-
-
-
-
 
   /*
   // Alternative Solution: Manufacturer Specific Data (MSD)
