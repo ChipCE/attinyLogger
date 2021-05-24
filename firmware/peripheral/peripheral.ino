@@ -100,8 +100,8 @@ void startAdv(void)
    * https://developer.apple.com/library/content/qa/qa1931/_index.html
    */
   Bluefruit.Advertising.restartOnDisconnect(true);
-  Bluefruit.Advertising.setInterval(32, 244);    // in units of 0.625 ms
-  Bluefruit.Advertising.setFastTimeout(30);      // number of seconds in fast mode
+  Bluefruit.Advertising.setInterval(100/0.625, 244);    // in units of 0.625 ms
+  Bluefruit.Advertising.setFastTimeout(0);      // number of seconds in fast mode
   Bluefruit.Advertising.start();
 }
 

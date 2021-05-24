@@ -15,6 +15,13 @@ const uint8_t CUSTOM_UUID[] =
 
 BLEUuid uuid = BLEUuid(CUSTOM_UUID);
 
+unsigned long lastRead;
+unsigned long minTime = 0;
+unsigned long maxTime = 0;
+unsigned long sum;
+float avg =0;
+unsigned long count = 0;
+
 void setup()
 {
   Serial.begin(115200);
@@ -53,6 +60,9 @@ void setup()
    * - Use active scan (used to retrieve the optional scan response adv packet)
    * - Start(0) = will scan forever since no timeout is given
    */
+
+  lastRead = millis();
+
   Bluefruit.Scanner.setRxCallback(scan_callback);
   Bluefruit.Scanner.restartOnDisconnect(true);
   Bluefruit.Scanner.filterRssi(-80);            // Only invoke callback for devices with RSSI >= -80 dBm
@@ -67,17 +77,34 @@ void setup()
 /* This callback handler is fired every time a valid advertising packet is detected */
 void scan_callback(ble_gap_evt_adv_report_t* report)
 {
-  Serial.println("scan callback");
+  // benchmark 
+  unsigned lap = millis() -lastRead;
+  lastRead = millis();
+  sum = sum + lap;
+  count++;
+  avg = (float)sum/(float)lap;
+
+  if(maxTime < lap)
+    maxTime = lap;
+
+  if(minTime > lap || minTime == 0)
+    minTime = lap;
+
+
+  printPlot(lap);
+  printBechmarkData();
+
+  //Serial.println("scan callback");
 
   /* Display the timestamp and device address */
   if (report->type.scan_response)
   {
-    Serial.printf("[SRP%9d] Packet received from ", millis());
-    printData(report);
+    //Serial.printf("[SRP%9d] Packet received from ", millis());
+    //printData(report);
   }
   else
   {
-    Serial.printf("[ADV%9d] Packet received from ", millis());
+    //Serial.printf("[ADV%9d] Packet received from ", millis());
   }
 
   //printData(report);
@@ -230,6 +257,20 @@ void printUuid16List(uint8_t* buffer, uint8_t len)
   Serial.println();
 }
 
+void printBechmarkData(){
+  Serial.print(avg);
+  Serial.print("\t");
+
+  Serial.print(minTime);
+  Serial.print("\t");
+
+  Serial.print(maxTime);
+  Serial.print("\t");
+}
+
+void printPlot(unsigned long value){
+  Serial.println(value);
+}
 
 void loop() 
 {
