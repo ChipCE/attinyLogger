@@ -27,7 +27,7 @@ void setup()
   Serial.begin(115200);
   while ( !Serial ) delay(10);   // for nrf52840 with native usb
 
-  Serial.println("Bluefruit52 Central Proximity Example");
+  Serial.println("Bluefruit52 Central Example");
   Serial.println("-------------------------------------\n");
 
   /* Enable both peripheral and central modes */
@@ -91,8 +91,8 @@ void scan_callback(ble_gap_evt_adv_report_t* report)
     minTime = lap;
 
 
-  printPlot(lap);
-  printBechmarkData();
+  //printPlot(lap);
+  //printBechmarkData();
 
   //Serial.println("scan callback");
 
@@ -105,6 +105,7 @@ void scan_callback(ble_gap_evt_adv_report_t* report)
   else
   {
     //Serial.printf("[ADV%9d] Packet received from ", millis());
+    printData(report);
   }
 
   //printData(report);

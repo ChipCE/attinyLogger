@@ -10,6 +10,10 @@ const uint8_t CUSTOM_UUID[] =
     0xE7, 0x11, 0x8F, 0x71, 0x1A, 0xFF, 0x67, 0xDF
 };
 
+int counter = 0;
+
+uint8_t msd_payload[5];
+
 
 BLEUuid uuid = BLEUuid(CUSTOM_UUID);
 
@@ -18,7 +22,7 @@ void setup()
   Serial.begin(115200);
   while ( !Serial ) delay(10);   // for nrf52840 with native usb
 
-  Serial.println("Bluefruit52 Peripheral Proximity Example");
+  Serial.println("Bluefruit52 Peripheral Example");
   Serial.println("----------------------------------------\n");
 
   // Initialize blinkTimer for 1000 ms and start it
@@ -75,7 +79,7 @@ void startAdv(void)
   // >  Company ID has been assigned. This value shall not be used in shipping end
   // >  products."
   */
-  uint8_t msd_payload[5]; // Two bytes are required for the CID, so we have 2 bytes user data, expand as needed
+  //uint8_t msd_payload[5]; // Two bytes are required for the CID, so we have 2 bytes user data, expand as needed
   uint16_t msd_cid = 0xFFFF;
   memset(msd_payload, 0, sizeof(msd_payload));
   memcpy(msd_payload, (uint8_t*)&msd_cid, sizeof(msd_cid));
@@ -119,6 +123,17 @@ void loop()
  */
 void blink_timer_callback(TimerHandle_t xTimerID)
 {
+  Serial.println("changed");
   (void) xTimerID;
   digitalToggle(LED_RED);
+  // data is set , to change it we need to change it in memory
+  counter++;
+  if(counter%2==0){
+    uint8_t sensor = 0x55;
+    memcpy(&msd_payload[4],&sensor, 0x01);
+  }
+  else{
+    uint8_t sensor = 0x66;
+    memcpy(&msd_payload[4],&sensor, 0x01);
+  }
 }
