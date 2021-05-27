@@ -6,7 +6,7 @@ import multiprocessing
 
 PORT = "/dev/ttyACM0"
 BAUDRATE = 115200
-POST_URL = "https://ptsv2.com/t/ua2gh-1621923584/post"
+POST_URL = "http://172.17.198.12:8000/CKDPlatform.io/api/v2/record"
 
 
 
@@ -26,7 +26,7 @@ def postHandle(dataPool):
                 print("POST",jsonObj)
                 dataTemplate ={
                     "user" : "mcu",
-                    "thing" : "mcu-test",
+                    "thing" : "mcu",
                     "time" : str(datetime.datetime.now().isoformat()),
                     "content" : jsonObj
                 }

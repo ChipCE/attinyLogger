@@ -101,11 +101,12 @@ void scan_callback(ble_gap_evt_adv_report_t* report)
   {
     //Serial.printf("[SRP%9d] Packet received from ", millis());
     //printData(report);
+    printJsonData(report);
   }
   else
   {
     //Serial.printf("[ADV%9d] Packet received from ", millis());
-    printData(report);
+    //printData(report);
   }
 
   //printData(report);
@@ -114,10 +115,26 @@ void scan_callback(ble_gap_evt_adv_report_t* report)
   Bluefruit.Scanner.resume();
 }
 
+void printJsonData(ble_gap_evt_adv_report_t* report){
+  uint8_t buffer[32];
+  uint8_t len = 0;
+  len = Bluefruit.Scanner.parseReportByType(report, BLE_GAP_AD_TYPE_MANUFACTURER_SPECIFIC_DATA, buffer, sizeof(buffer));
+  if (len)
+  {
+    // only need the last 2 byte
+    int counter = buffer[3]*256 + buffer[4];
+    Serial.print("{\"counter\":");
+    Serial.print(counter);
+    Serial.println("}");
+
+    memset(buffer, 0, sizeof(buffer));
+  }
+}
+
 
 void printData(ble_gap_evt_adv_report_t* report)
 {
-   uint8_t len = 0;
+  uint8_t len = 0;
   uint8_t buffer[32];
   memset(buffer, 0, sizeof(buffer));
     // MAC is in little endian --> print reverse
@@ -219,7 +236,6 @@ void printData(ble_gap_evt_adv_report_t* report)
   len = Bluefruit.Scanner.parseReportByType(report, BLE_GAP_AD_TYPE_MANUFACTURER_SPECIFIC_DATA, buffer, sizeof(buffer));
   if (len)
   {
-    Serial.printf("%14s ", "MAN SPEC DATA");
     Serial.printBuffer(buffer, len, '-');
     Serial.println();
     memset(buffer, 0, sizeof(buffer));

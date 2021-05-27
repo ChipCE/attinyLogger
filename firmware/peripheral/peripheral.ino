@@ -1,8 +1,16 @@
 #include <bluefruit.h>
 #include <ble_gap.h>
 
+//#define ENABLE_SERIAL
+
 // Software Timer for blinking RED LED
 SoftwareTimer blinkTimer;
+//SchedulerRTOS task;
+// int dataUpdateInterval = 600000;
+// int baconBroadcastInterval = 300000/0.625;
+
+int dataUpdateInterval = 60000;
+int baconBroadcastInterval = 250/0.625;
 
 const uint8_t CUSTOM_UUID[] =
 {
@@ -19,28 +27,34 @@ BLEUuid uuid = BLEUuid(CUSTOM_UUID);
 
 void setup() 
 {
-  Serial.begin(115200);
-  while ( !Serial ) delay(10);   // for nrf52840 with native usb
+  #ifdef ENABLE_SERIAL
+    Serial.begin(115200);
+    //while ( !Serial ) delay(10);   // for nrf52840 with native usb
+      Serial.println("Bluefruit52 Peripheral Example");
+    Serial.println("----------------------------------------\n");
+  #endif
 
-  Serial.println("Bluefruit52 Peripheral Example");
-  Serial.println("----------------------------------------\n");
+
 
   // Initialize blinkTimer for 1000 ms and start it
-  blinkTimer.begin(1000, blink_timer_callback);
+  blinkTimer.begin(dataUpdateInterval, blink_timer_callback);
   blinkTimer.start();
 
   if (!Bluefruit.begin())
   {
-    Serial.println("Unable to init Bluefruit");
+    #ifdef ENABLE_SERIAL
+      Serial.println("Unable to init Bluefruit");
+    #endif
     while(1)
     {
-      digitalToggle(LED_RED);
       delay(100);
     }
   }
   else
   {
-    Serial.println("Bluefruit initialized (peripheral mode)");
+    #ifdef ENABLE_SERIAL
+      Serial.println("Bluefruit initialized (peripheral mode)");
+    #endif
   }
 
   Bluefruit.setTxPower(4);    // Check bluefruit.h for supported values
@@ -49,12 +63,15 @@ void setup()
   // Set up and start advertising
   startAdv();
 
-  Serial.println("Advertising started"); 
+  #ifdef ENABLE_SERIAL
+    Serial.println("Advertising started"); 
+  #endif
+  //task.startLoop(tsetFunc);
 }
 
 void startAdv(void)
 {   
-  Serial.println("Adv loop");
+  //Serial.println("Adv loop");
   // Note: The entire advertising packet is limited to 31 bytes!
   
   // Advertising packet
@@ -83,15 +100,14 @@ void startAdv(void)
   uint16_t msd_cid = 0xFFFF;
   memset(msd_payload, 0, sizeof(msd_payload));
   memcpy(msd_payload, (uint8_t*)&msd_cid, sizeof(msd_cid));
-  msd_payload[2] = 0x11;
-  msd_payload[3] = 0x22;
-  msd_payload[4] = 0x33;
+  msd_payload[2] = 0x00;
+  msd_payload[3] = 0x00;
+  msd_payload[4] = 0x00;
   Bluefruit.Advertising.addData(BLE_GAP_AD_TYPE_MANUFACTURER_SPECIFIC_DATA, msd_payload, sizeof(msd_payload));
 
   // Not enough room in the advertising packet for name
   // so store it in the Scan Response instead
-  uint8_t datalen = 0x02;
-  Bluefruit.ScanResponse.addData(BLE_GAP_AD_TYPE_MANUFACTURER_SPECIFIC_DATA,msd_payload,datalen);
+  Bluefruit.ScanResponse.addData(BLE_GAP_AD_TYPE_MANUFACTURER_SPECIFIC_DATA,msd_payload,0x05);
   //Bluefruit.ScanResponse.addName();
 
   /* Start Advertising
@@ -104,7 +120,7 @@ void startAdv(void)
    * https://developer.apple.com/library/content/qa/qa1931/_index.html
    */
   Bluefruit.Advertising.restartOnDisconnect(true);
-  Bluefruit.Advertising.setInterval(100/0.625, 244);    // in units of 0.625 ms
+  Bluefruit.Advertising.setInterval(baconBroadcastInterval, 244);    // in units of 0.625 ms
   Bluefruit.Advertising.setFastTimeout(0);      // number of seconds in fast mode
   Bluefruit.Advertising.start();
 }
@@ -123,17 +139,21 @@ void loop()
  */
 void blink_timer_callback(TimerHandle_t xTimerID)
 {
-  Serial.println("changed");
+  //Serial.println("changed");
   (void) xTimerID;
-  digitalToggle(LED_RED);
+  //digitalToggle(LED_RED);
   // data is set , to change it we need to change it in memory
   counter++;
-  if(counter%2==0){
-    uint8_t sensor = 0x55;
-    memcpy(&msd_payload[4],&sensor, 0x01);
-  }
-  else{
-    uint8_t sensor = 0x66;
-    memcpy(&msd_payload[4],&sensor, 0x01);
-  }
+  Bluefruit.ScanResponse.clearData();
+  msd_payload[4] = (uint8_t)(counter%256);
+  msd_payload[3] = (uint8_t)(counter/256);
+  Bluefruit.ScanResponse.addData(BLE_GAP_AD_TYPE_MANUFACTURER_SPECIFIC_DATA,msd_payload,0x05);
+
+  //Bluefruit.Advertising.stop();
+  //startAdv();
+}
+
+
+void tsetFunc(){
+  //Serial.println("lol");
 }
