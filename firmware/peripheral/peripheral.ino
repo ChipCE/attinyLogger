@@ -4,13 +4,24 @@
 //#define ENABLE_SERIAL
 
 // Software Timer for blinking RED LED
-SoftwareTimer blinkTimer;
+SoftwareTimer selfTimer;
 //SchedulerRTOS task;
-// int dataUpdateInterval = 600000;
-// int baconBroadcastInterval = 300000/0.625;
+// int selfTimerInterval = 600000;
+// int fastBroadcastInterval = 300000/0.625;
 
-int dataUpdateInterval = 60000;
-int baconBroadcastInterval = 250/0.625;
+uint8_t txPower = 0x00;
+int selfTimerInterval = 60000;
+int fastBroadcastInterval = 250/0.625;
+int slowBroadcastInterval = 500/0.625;
+const uint8_t rtcPin = 5;
+int tickCounter = 0;
+int enableBroadcastInterval = 60;
+int fastBroadcastTimeout = 2;
+int broadcastTimeout = 5; // second
+
+
+
+
 
 const uint8_t CUSTOM_UUID[] =
 {
@@ -29,26 +40,20 @@ void setup()
 {
   #ifdef ENABLE_SERIAL
     Serial.begin(115200);
-    //while ( !Serial ) delay(10);   // for nrf52840 with native usb
+    while ( !Serial ) delay(10);   // for nrf52840 with native usb
       Serial.println("Bluefruit52 Peripheral Example");
     Serial.println("----------------------------------------\n");
   #endif
 
-
-
-  // Initialize blinkTimer for 1000 ms and start it
-  blinkTimer.begin(dataUpdateInterval, blink_timer_callback);
-  blinkTimer.start();
+  // Initialize selfTimer for 1000 ms and start it
+  selfTimer.begin(selfTimerInterval, selfTimerCallback);
+  selfTimer.start();
 
   if (!Bluefruit.begin())
   {
     #ifdef ENABLE_SERIAL
       Serial.println("Unable to init Bluefruit");
     #endif
-    while(1)
-    {
-      delay(100);
-    }
   }
   else
   {
@@ -57,17 +62,20 @@ void setup()
     #endif
   }
 
-  Bluefruit.setTxPower(4);    // Check bluefruit.h for supported values
+  Bluefruit.setTxPower(txPower);
   Bluefruit.setName("Bluefruit52");
 
-  // Set up and start advertising
   startAdv();
 
   #ifdef ENABLE_SERIAL
     Serial.println("Advertising started"); 
   #endif
-  //task.startLoop(tsetFunc);
+
+
+  //task.startLoop(loopCallback);
 }
+
+
 
 void startAdv(void)
 {   
@@ -110,19 +118,10 @@ void startAdv(void)
   Bluefruit.ScanResponse.addData(BLE_GAP_AD_TYPE_MANUFACTURER_SPECIFIC_DATA,msd_payload,0x05);
   //Bluefruit.ScanResponse.addName();
 
-  /* Start Advertising
-   * - Enable auto advertising if disconnected
-   * - Interval:  fast mode = 20 ms, slow mode = 152.5 ms
-   * - Timeout for fast mode is 30 seconds
-   * - Start(timeout) with timeout = 0 will advertise forever (until connected)
-   * 
-   * For recommended advertising interval
-   * https://developer.apple.com/library/content/qa/qa1931/_index.html
-   */
   Bluefruit.Advertising.restartOnDisconnect(true);
-  Bluefruit.Advertising.setInterval(baconBroadcastInterval, 244);    // in units of 0.625 ms
-  Bluefruit.Advertising.setFastTimeout(0);      // number of seconds in fast mode
-  Bluefruit.Advertising.start();
+  Bluefruit.Advertising.setInterval(fastBroadcastInterval, slowBroadcastInterval);    // in units of 0.625 ms
+  Bluefruit.Advertising.setFastTimeout(fastBroadcastTimeout);      // number of seconds in fast mode
+  Bluefruit.Advertising.start(broadcastTimeout);
 }
 
 void loop() 
@@ -137,7 +136,7 @@ void loop()
  * 
  * More information http://www.freertos.org/RTOS-software-timer.html
  */
-void blink_timer_callback(TimerHandle_t xTimerID)
+void selfTimerCallback(TimerHandle_t xTimerID)
 {
   //Serial.println("changed");
   (void) xTimerID;
@@ -149,11 +148,5 @@ void blink_timer_callback(TimerHandle_t xTimerID)
   msd_payload[3] = (uint8_t)(counter/256);
   Bluefruit.ScanResponse.addData(BLE_GAP_AD_TYPE_MANUFACTURER_SPECIFIC_DATA,msd_payload,0x05);
 
-  //Bluefruit.Advertising.stop();
-  //startAdv();
-}
-
-
-void tsetFunc(){
-  //Serial.println("lol");
+  Bluefruit.Advertising.start(broadcastTimeout);
 }
