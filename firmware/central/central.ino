@@ -27,13 +27,13 @@ void setup()
   Serial.begin(115200);
   while ( !Serial ) delay(10);   // for nrf52840 with native usb
 
-  Serial.println("Bluefruit52 Central Example");
-  Serial.println("-------------------------------------\n");
+  Serial.println("#Bluefruit52 Central Example");
+  Serial.println("#-------------------------------------\n");
 
   /* Enable both peripheral and central modes */
   if ( !Bluefruit.begin(1, 1) )
   {
-    Serial.println("Unable to init Bluefruit");
+    Serial.println("#Unable to init Bluefruit");
     while(1)
     {
       digitalToggle(LED_RED);
@@ -42,7 +42,7 @@ void setup()
   }
   else
   {
-    Serial.println("Bluefruit initialized (central mode)");
+    Serial.println("#Bluefruit initialized (central mode)");
   }
   
   Bluefruit.setTxPower(4);    // Check bluefruit.h for supported values
@@ -71,7 +71,7 @@ void setup()
   Bluefruit.Scanner.setInterval(160, 80);       // in units of 0.625 ms
   Bluefruit.Scanner.useActiveScan(true);        // Request scan response data
   Bluefruit.Scanner.start(0);                   // 0 = Don't stop scanning after n seconds
-  Serial.println("Scanning ...");
+  Serial.println("#Scanning ...");
 }
 
 /* This callback handler is fired every time a valid advertising packet is detected */
@@ -123,8 +123,12 @@ void printJsonData(ble_gap_evt_adv_report_t* report){
   {
     // only need the last 2 byte
     int counter = buffer[3]*256 + buffer[4];
+    float battVoltage = ((float)(buffer[5]*256 + buffer[6]))*2*3.3/1024;
+    //int battVoltage = buffer[5]*256 + buffer[6];
     Serial.print("{\"counter\":");
     Serial.print(counter);
+    Serial.print(",\"voltage\":");
+    Serial.print(battVoltage);
     Serial.println("}");
 
     memset(buffer, 0, sizeof(buffer));

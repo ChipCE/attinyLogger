@@ -30,7 +30,7 @@ def postHandle(dataPool):
                     "time" : str(datetime.datetime.now().isoformat()),
                     "content" : jsonObj
                 }
-                print(dataTemplate)
+                print("SEND",dataTemplate)
                 try:
                     postReq = requests.post(POST_URL, json=dataTemplate)
                     print(postReq.status_code, postReq.reason)
@@ -63,7 +63,9 @@ def serialHandle(dataPool):
                 serialLine = ''.join(line)[:-2]
                 line = []
                 print("RECV",serialLine)
-                dataPool.put(serialLine)
+                if len(serialLine) >0 :
+                    if serialLine[0] != '#':
+                        dataPool.put(serialLine)
                 break
     ser.close()
 

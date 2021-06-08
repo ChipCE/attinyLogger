@@ -5,6 +5,7 @@
 
 // Software Timer for blinking RED LED
 SoftwareTimer selfTimer;
+#define VBATPIN A6
 //SchedulerRTOS task;
 // int selfTimerInterval = 600000;
 // int fastBroadcastInterval = 300000/0.625;
@@ -31,7 +32,7 @@ const uint8_t CUSTOM_UUID[] =
 
 int counter = 0;
 
-uint8_t msd_payload[5];
+uint8_t msd_payload[7];
 
 
 BLEUuid uuid = BLEUuid(CUSTOM_UUID);
@@ -90,7 +91,7 @@ void startAdv(void)
   // we will look for on the Central side via Bluefruit.Scanner.filterUuid(uuid);
   // A valid 128-bit UUID can be generated online with almost no chance of conflict
   // with another device or etup
-  //Bluefruit.Advertising.addUuid(uuid);
+  Bluefruit.Advertising.addUuid(uuid);
 
   /*
   // Alternative Solution: Manufacturer Specific Data (MSD)
@@ -111,11 +112,12 @@ void startAdv(void)
   msd_payload[2] = 0x00;
   msd_payload[3] = 0x00;
   msd_payload[4] = 0x00;
-  Bluefruit.Advertising.addData(BLE_GAP_AD_TYPE_MANUFACTURER_SPECIFIC_DATA, msd_payload, sizeof(msd_payload));
+  readBattVoltage();
+  //Bluefruit.Advertising.addData(BLE_GAP_AD_TYPE_MANUFACTURER_SPECIFIC_DATA, msd_payload, sizeof(msd_payload));
 
   // Not enough room in the advertising packet for name
   // so store it in the Scan Response instead
-  Bluefruit.ScanResponse.addData(BLE_GAP_AD_TYPE_MANUFACTURER_SPECIFIC_DATA,msd_payload,0x05);
+  Bluefruit.ScanResponse.addData(BLE_GAP_AD_TYPE_MANUFACTURER_SPECIFIC_DATA,msd_payload,0x07);
   //Bluefruit.ScanResponse.addName();
 
   Bluefruit.Advertising.restartOnDisconnect(true);
@@ -146,7 +148,20 @@ void selfTimerCallback(TimerHandle_t xTimerID)
   Bluefruit.ScanResponse.clearData();
   msd_payload[4] = (uint8_t)(counter%256);
   msd_payload[3] = (uint8_t)(counter/256);
-  Bluefruit.ScanResponse.addData(BLE_GAP_AD_TYPE_MANUFACTURER_SPECIFIC_DATA,msd_payload,0x05);
+  // read battery voltage
+  readBattVoltage();
+  
+
+  Bluefruit.ScanResponse.addData(BLE_GAP_AD_TYPE_MANUFACTURER_SPECIFIC_DATA,msd_payload,0x07);
 
   Bluefruit.Advertising.start(broadcastTimeout);
+}
+
+void readBattVoltage(){
+  int battAdc = analogRead(VBATPIN);
+  #ifdef ENABLE_SERIAL
+      Serial.println(battAdc);
+    #endif
+  msd_payload[6] = (uint8_t)(battAdc%256);
+  msd_payload[5] = (uint8_t)(battAdc/256);
 }
