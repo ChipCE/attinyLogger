@@ -5,7 +5,7 @@
 
 // Software Timer for blinking RED LED
 SoftwareTimer selfTimer;
-#define VBATPIN A6
+#define VBATPIN A5
 //SchedulerRTOS task;
 // int selfTimerInterval = 600000;
 // int fastBroadcastInterval = 300000/0.625;
