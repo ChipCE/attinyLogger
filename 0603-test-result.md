@@ -24,3 +24,7 @@
 ## power consumption
 
 Start 11:15AM
+
+## 
+
+6434 0.63v
